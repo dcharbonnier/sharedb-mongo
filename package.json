@@ -1,6 +1,6 @@
 {
-  "name": "sharedb-mongo",
-  "version": "1.0.0-beta.4",
+  "name": "@teamwork/sharedb-mongo",
+  "version": "1.0.2",
   "description": "MongoDB database adapter for ShareDB",
   "main": "index.js",
   "dependencies": {
@@ -13,13 +13,13 @@
     "expect.js": "^0.3.1",
     "istanbul": "^0.4.5",
     "mocha": "^5.2.0",
-    "@teamwork/sharedb-mingo-memory": "^1.0.0"
+    "@teamwork/sharedb-mingo-memory": "^1.0.2"
   },
   "scripts": {
     "test": "node_modules/.bin/mocha",
     "test-cover": "node_modules/istanbul/lib/cli.js cover node_modules/mocha/bin/_mocha"
   },
-  "repository": "git://github.com/share/sharedb-mongo.git",
+  "repository": "git://github.com/teamwork/sharedb-mongo.git",
   "author": "Nate Smith and Joseph Gentle",
   "license": "MIT"
 }

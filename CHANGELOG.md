@@ -20,7 +20,7 @@
 * Change query format -- deprecate `$query`, support all Mongo methods
   as `$`-prefixed properties and change meaning of some meta operators.
   See the
-  [query docs](https://github.com/share/sharedb-mongo#queries))
+  [query docs](https://github.com/teamwork/sharedb-mongo#queries))
   for more details.
 
 * Deprecate `$orderby` in favor of `$sort`
