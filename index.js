@@ -118,6 +118,15 @@ ShareDbMongo.prototype._flushPendingConnect = function() {
   }
 };
 
+ShareDbMongo.prototype._mongodbOptions = function(options) {
+  if(options instanceof Object) {
+    return Object.assign(Object.assign({}, options.mongoOptions), { useNewUrlParser: true })
+  } else {
+    return  { useNewUrlParser: true };
+  }
+}
+
+
 ShareDbMongo.prototype._connect = function(mongo, options) {
   // Create the mongo connection client connections if needed
   //
@@ -131,10 +140,10 @@ ShareDbMongo.prototype._connect = function(mongo, options) {
     } else {
       tasks = {
         mongo: function(parallelCb) {
-          mongodb.connect(mongo, options.mongoOptions, parallelCb);
+          mongodb.connect(mongo, self._mongodbOptions(options.mongoOptions), parallelCb);
         },
         mongoPoll: function(parallelCb) {
-          mongodb.connect(options.mongoPoll, options.mongoPollOptions, parallelCb);
+          mongodb.connect(options.mongoPoll, self._mongodbOptions(options.mongoPollOptions), parallelCb);
         }
       };
     }
@@ -155,7 +164,7 @@ ShareDbMongo.prototype._connect = function(mongo, options) {
     mongo(finish);
     return;
   }
-  mongodb.connect(mongo, options, finish);
+  mongodb.connect(mongo, this._mongodbOptions(options), finish);
 };
 
 ShareDbMongo.prototype.close = function(callback) {
