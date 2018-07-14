@@ -128,13 +128,13 @@ class ShareDbMongo extends DB {
     if (options.mongoPoll) {
       var tasks;
       if (typeof mongo === 'function') {
-        tasks = {mongo: mongo, mongoPoll: options.mongoPoll};
+        tasks = {mongo, mongoPoll: options.mongoPoll};
       } else {
         tasks = {
-          mongo: function(parallelCb) {
+          mongo(parallelCb) {
             mongodb.connect(mongo, self._mongodbOptions(options.mongoOptions), parallelCb);
           },
-          mongoPoll: function(parallelCb) {
+          mongoPoll(parallelCb) {
             mongodb.connect(options.mongoPoll, self._mongodbOptions(options.mongoPollOptions), parallelCb);
           }
         };
@@ -1371,7 +1371,7 @@ var collectionOperationsMap = {
       return cb(err);
     }
     var mapReduceOptions = {
-      query: query,
+      query,
       out: {inline: 1},
       scope: value.scope || {}
     };
