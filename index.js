@@ -61,7 +61,7 @@ class ShareDbMongo extends DB {
     var err = this.validateCollectionName(collectionName);
     if (err) return callback(err);
     // Gotcha: calls back sync if connected or async if not
-    this.getDbs(function(err, mongo) {
+    this.getDbs((err, mongo) => {
       if (err) return callback(err);
       var collection = mongo.db().collection(collectionName);
       return callback(null, collection);
@@ -73,7 +73,7 @@ class ShareDbMongo extends DB {
     var err = this.validateCollectionName(collectionName);
     if (err) return callback(err);
     // Gotcha: calls back sync if connected or async if not
-    this.getDbs(function(err, mongo, mongoPoll) {
+    this.getDbs((err, mongo, mongoPoll) => {
       if (err) return callback(err);
       var collection = (mongoPoll || mongo).db().collection(collectionName);
       return callback(null, collection);
@@ -83,7 +83,7 @@ class ShareDbMongo extends DB {
   getCollectionPoll(collectionName, callback) {
     if (this.pollDelay) {
       var self = this;
-      setTimeout(function() {
+      setTimeout(() => {
         self._getCollectionPoll(collectionName, callback);
       }, this.pollDelay);
       return;
@@ -139,7 +139,7 @@ class ShareDbMongo extends DB {
           }
         };
       }
-      async.parallel(tasks, function(err, results) {
+      async.parallel(tasks, (err, results) => {
         if (err) throw err;
         self.mongo = results.mongo;
         self.mongoPoll = results.mongoPoll;
@@ -147,7 +147,7 @@ class ShareDbMongo extends DB {
       });
       return;
     }
-    var finish = function(err, db) {
+    var finish = (err, db) => {
       if (err) throw err;
       self.mongo = db;
       self._flushPendingConnect();
@@ -161,15 +161,15 @@ class ShareDbMongo extends DB {
 
   close(callback) {
     if (!callback) {
-      callback = function(err) {
+      callback = err => {
         if (err) throw err;
       };
     }
     var self = this;
-    this.getDbs(function(err, mongo, mongoPoll) {
+    this.getDbs((err, mongo, mongoPoll) => {
       if (err) return callback(err);
       self.closed = true;
-      mongo.close(function(err) {
+      mongo.close(err => {
         if (err) return callback(err);
         if (!mongoPoll) return callback();
         mongoPoll.close(callback);
@@ -181,14 +181,14 @@ class ShareDbMongo extends DB {
 
   commit(collectionName, id, op, snapshot, options, callback) {
     var self = this;
-    this._writeOp(collectionName, id, op, snapshot, function(err, result) {
+    this._writeOp(collectionName, id, op, snapshot, (err, result) => {
       if (err) return callback(err);
       var opId = result.insertedId;
-      self._writeSnapshot(collectionName, id, snapshot, opId, function(err, succeeded) {
+      self._writeSnapshot(collectionName, id, snapshot, opId, (err, succeeded) => {
         if (succeeded) return callback(err, succeeded);
         // Cleanup unsuccessful op if snapshot write failed. This is not
         // neccessary for data correctness, but it gets rid of clutter
-        self._deleteOp(collectionName, opId, function(removeErr) {
+        self._deleteOp(collectionName, opId, removeErr => {
           callback(err || removeErr, succeeded);
         });
       });
@@ -200,7 +200,7 @@ class ShareDbMongo extends DB {
       var err = ShareDbMongo.invalidOpVersionError(collectionName, id, op.v);
       return callback(err);
     }
-    this.getOpCollection(collectionName, function(err, opCollection) {
+    this.getOpCollection(collectionName, (err, opCollection) => {
       if (err) return callback(err);
       var doc = shallowClone(op);
       doc.d = id;
@@ -210,18 +210,18 @@ class ShareDbMongo extends DB {
   }
 
   _deleteOp(collectionName, opId, callback) {
-    this.getOpCollection(collectionName, function(err, opCollection) {
+    this.getOpCollection(collectionName, (err, opCollection) => {
       if (err) return callback(err);
       opCollection.deleteOne({_id: opId}, callback);
     });
   }
 
   _writeSnapshot(collectionName, id, snapshot, opLink, callback) {
-    this.getCollection(collectionName, function(err, collection) {
+    this.getCollection(collectionName, (err, collection) => {
       if (err) return callback(err);
       var doc = castToDoc(id, snapshot, opLink);
       if (doc._v === 1) {
-        collection.insertOne(doc, function(err, result) {
+        collection.insertOne(doc, (err, result) => {
           if (err) {
             // Return non-success instead of duplicate key error, since this is
             // expected to occur during simultaneous creates on the same id
@@ -233,7 +233,7 @@ class ShareDbMongo extends DB {
           callback(null, true);
         });
       } else {
-        collection.replaceOne({_id: id, _v: doc._v - 1}, doc, function(err, result) {
+        collection.replaceOne({_id: id, _v: doc._v - 1}, doc, (err, result) => {
           if (err) return callback(err);
           var succeeded = !!result.modifiedCount;
           callback(null, succeeded);
@@ -245,11 +245,11 @@ class ShareDbMongo extends DB {
   // **** Snapshot methods
 
   getSnapshot(collectionName, id, fields, options, callback) {
-    this.getCollection(collectionName, function(err, collection) {
+    this.getCollection(collectionName, (err, collection) => {
       if (err) return callback(err);
       var query = {_id: id};
       var projection = getProjection(fields, options);
-      collection.find(query).limit(1).project(projection).next(function(err, doc) {
+      collection.find(query).limit(1).project(projection).next((err, doc) => {
         if (err) return callback(err);
         var snapshot = (doc) ? castToSnapshot(doc) : new MongoSnapshot(id, 0, null, undefined);
         callback(null, snapshot);
@@ -258,11 +258,11 @@ class ShareDbMongo extends DB {
   }
 
   getSnapshotBulk(collectionName, ids, fields, options, callback) {
-    this.getCollection(collectionName, function(err, collection) {
+    this.getCollection(collectionName, (err, collection) => {
       if (err) return callback(err);
       var query = {_id: {$in: ids}};
       var projection = getProjection(fields, options);
-      collection.find(query).project(projection).toArray(function(err, docs) {
+      collection.find(query).project(projection).toArray((err, docs) => {
         if (err) return callback(err);
         var snapshotMap = {};
         for (var i = 0; i < docs.length; i++) {
@@ -301,7 +301,7 @@ class ShareDbMongo extends DB {
   // Get and return the op collection from mongo, ensuring it has the op index.
   getOpCollection(collectionName, callback) {
     var self = this;
-    this.getDbs(function(err, mongo) {
+    this.getDbs((err, mongo) => {
       if (err) return callback(err);
       var name = self.getOplogCollectionName(collectionName);
       var collection = mongo.db().collection(name);
@@ -321,9 +321,9 @@ class ShareDbMongo extends DB {
       // collection this won't be a problem, but this is a dangerous mechanism.
       // Perhaps we should only warn instead of creating the indexes, especially
       // when there is a lot of data in the collection.
-      collection.createIndex({d: 1, v: 1}, {background: true}, function(err) {
+      collection.createIndex({d: 1, v: 1}, {background: true}, err => {
         if (err) return callback(err);
-        collection.createIndex({src: 1, seq: 1, v: 1}, {background: true}, function(err) {
+        collection.createIndex({src: 1, seq: 1, v: 1}, {background: true}, err => {
           if (err) return callback(err);
           self.opIndexes[collectionName] = true;
           callback(null, collection);
@@ -337,7 +337,7 @@ class ShareDbMongo extends DB {
       var err = ShareDbMongo.missingLastOperationError(collectionName, id);
       return callback(err);
     }
-    this._getOps(collectionName, id, from, options, function(err, ops) {
+    this._getOps(collectionName, id, from, options, (err, ops) => {
       if (err) return callback(err);
       var filtered = getLinkedOps(ops, null, snapshot._opLink);
       var err = checkOpsFrom(collectionName, id, filtered, from);
@@ -348,7 +348,7 @@ class ShareDbMongo extends DB {
 
   getOps(collectionName, id, from, to, options, callback) {
     var self = this;
-    this._getSnapshotOpLink(collectionName, id, function(err, doc) {
+    this._getSnapshotOpLink(collectionName, id, (err, doc) => {
       if (err) return callback(err);
       if (doc) {
         if (isCurrentVersion(doc, from)) {
@@ -357,7 +357,7 @@ class ShareDbMongo extends DB {
         var err = doc && checkDocHasOp(collectionName, id, doc);
         if (err) return callback(err);
       }
-      self._getOps(collectionName, id, from, options, function(err, ops) {
+      self._getOps(collectionName, id, from, options, (err, ops) => {
         if (err) return callback(err);
         var filtered = filterOps(ops, doc, to);
         var err = checkOpsFrom(collectionName, id, filtered, from);
@@ -370,7 +370,7 @@ class ShareDbMongo extends DB {
   getOpsBulk(collectionName, fromMap, toMap, options, callback) {
     var self = this;
     var ids = Object.keys(fromMap);
-    this._getSnapshotOpLinkBulk(collectionName, ids, function(err, docs) {
+    this._getSnapshotOpLinkBulk(collectionName, ids, (err, docs) => {
       if (err) return callback(err);
       var docMap = getDocMap(docs);
       // Add empty array for snapshot versions that are up to date and create
@@ -396,7 +396,7 @@ class ShareDbMongo extends DB {
       // requested versions
       if (!conditions.length) return callback(null, opsMap);
       // Otherwise, get all of the ops that are newer
-      self._getOpsBulk(collectionName, conditions, options, function(err, opsBulk) {
+      self._getOpsBulk(collectionName, conditions, options, (err, opsBulk) => {
         if (err) return callback(err);
         for (var i = 0; i < conditions.length; i++) {
           var id = conditions[i].d;
@@ -415,7 +415,7 @@ class ShareDbMongo extends DB {
   }
 
   _getOps(collectionName, id, from, options, callback) {
-    this.getOpCollection(collectionName, function(err, opCollection) {
+    this.getOpCollection(collectionName, (err, opCollection) => {
       if (err) return callback(err);
       var query = getOpsQuery(id, from);
       // Exclude the `d` field, which is only for use internal to livedb-mongo.
@@ -428,7 +428,7 @@ class ShareDbMongo extends DB {
   }
 
   _getOpsBulk(collectionName, conditions, options, callback) {
-    this.getOpCollection(collectionName, function(err, opCollection) {
+    this.getOpCollection(collectionName, (err, opCollection) => {
       if (err) return callback(err);
       var query = {$or: conditions};
       // Exclude the `m` field, which can be used to store metadata on ops for
@@ -440,7 +440,7 @@ class ShareDbMongo extends DB {
   }
 
   _getSnapshotOpLink(collectionName, id, callback) {
-    this.getCollection(collectionName, function(err, collection) {
+    this.getCollection(collectionName, (err, collection) => {
       if (err) return callback(err);
       var query = {_id: id};
       var projection = {_id: 0, _o: 1, _v: 1};
@@ -449,7 +449,7 @@ class ShareDbMongo extends DB {
   }
 
   _getSnapshotOpLinkBulk(collectionName, ids, callback) {
-    this.getCollection(collectionName, function(err, collection) {
+    this.getCollection(collectionName, (err, collection) => {
       if (err) return callback(err);
       var query = {_id: {$in: ids}};
       var projection = {_o: 1, _v: 1};
@@ -471,7 +471,7 @@ class ShareDbMongo extends DB {
         collection,
         parsed.query,
         parsed.collectionOperationValue,
-        function(err, extra) {
+        (err, extra) => {
           if (err) return callback(err);
           callback(null, [], extra);
         }
@@ -502,7 +502,7 @@ class ShareDbMongo extends DB {
       cursorOperationsMap[parsed.cursorOperationKey](
         cursor,
         parsed.cursorOperationValue,
-        function(err, extra) {
+        (err, extra) => {
           if (err) return callback(err);
           callback(null, [], extra);
         }
@@ -518,10 +518,10 @@ class ShareDbMongo extends DB {
 
   query(collectionName, inputQuery, fields, options, callback) {
     var self = this;
-    this.getCollection(collectionName, function(err, collection) {
+    this.getCollection(collectionName, (err, collection) => {
       if (err) return callback(err);
       var projection = getProjection(fields, options);
-      self._query(collection, inputQuery, projection, function(err, results, extra) {
+      self._query(collection, inputQuery, projection, (err, results, extra) => {
         if (err) return callback(err);
         var snapshots = [];
         for (var i = 0; i < results.length; i++) {
@@ -535,10 +535,10 @@ class ShareDbMongo extends DB {
 
   queryPoll(collectionName, inputQuery, options, callback) {
     var self = this;
-    this.getCollectionPoll(collectionName, function(err, collection) {
+    this.getCollectionPoll(collectionName, (err, collection) => {
       if (err) return callback(err);
       var projection = {_id: 1};
-      self._query(collection, inputQuery, projection, function(err, results, extra) {
+      self._query(collection, inputQuery, projection, (err, results, extra) => {
         if (err) return callback(err);
         var ids = [];
         for (var i = 0; i < results.length; i++) {
@@ -551,7 +551,7 @@ class ShareDbMongo extends DB {
 
   queryPollDoc(collectionName, id, inputQuery, options, callback) {
     var self = this;
-    self.getCollectionPoll(collectionName, function(err, collection) {
+    self.getCollectionPoll(collectionName, (err, collection) => {
       var parsed = self._getSafeParsedQuery(inputQuery, callback);
       if (!parsed) return;
 
@@ -585,7 +585,7 @@ class ShareDbMongo extends DB {
         parsed.query._id = id;
       }
 
-      collection.find(parsed.query).limit(1).project({_id: 1}).next(function(err, doc) {
+      collection.find(parsed.query).limit(1).project({_id: 1}).next((err, doc) => {
         callback(err, !!doc);
       });
     });
@@ -776,7 +776,7 @@ ShareDbMongo.prototype.projectsSnapshots = true;
 
 DB.prototype.getCommittedOpVersion = function(collectionName, id, snapshot, op, options, callback) {
   var self = this;
-  this.getOpCollection(collectionName, function(err, opCollection) {
+  this.getOpCollection(collectionName, (err, opCollection) => {
     if (err) return callback(err);
     var query = {
       src: op.src,
@@ -788,7 +788,7 @@ DB.prototype.getCommittedOpVersion = function(collectionName, id, snapshot, op, 
     // Since ops are optimistically written prior to writing the snapshot, the
     // op could end up being written multiple times or have been written but
     // not count as committed if not backreferenced from the snapshot
-    opCollection.find(query).project(projection).sort(sort).limit(1).next(function(err, doc) {
+    opCollection.find(query).project(projection).sort(sort).limit(1).next((err, doc) => {
       if (err) return callback(err);
       // If we find no op with the same src and seq, we definitely don't have
       // any match. This should prevent us from accidentally querying a huge
@@ -798,7 +798,7 @@ DB.prototype.getCommittedOpVersion = function(collectionName, id, snapshot, op, 
       // the ops from the snapshot to figure out if the op was actually
       // committed already, and at what version in case of multiple matches
       var from = doc.v;
-      self.getOpsToSnapshot(collectionName, id, from, snapshot, options, function(err, ops) {
+      self.getOpsToSnapshot(collectionName, id, from, snapshot, options, (err, ops) => {
         if (err) return callback(err);
         for (var i = ops.length; i--;) {
           var item = ops[i];
@@ -907,22 +907,20 @@ function getOpsQuery(id, from) {
 function readOpsBulk(stream, callback) {
   var opsMap = {};
   var errored;
-  stream.on('error', function(err) {
+  stream.on('error', err => {
     errored = true;
     return callback(err);
   });
-  stream.on('end', function() {
+  stream.on('end', () => {
     if (errored) return;
     // Sort ops for each doc in ascending order by version
     for (var id in opsMap) {
-      opsMap[id].sort(function(a, b) {
-        return a.v - b.v;
-      });
+      opsMap[id].sort((a, b) => a.v - b.v);
     }
     callback(null, opsMap);
   });
   // Read each op and push onto a list for the appropriate doc
-  stream.on('data', function(op) {
+  stream.on('data', op => {
     var id = op.d;
     if (opsMap[id]) {
       opsMap[id].push(op);
@@ -1354,11 +1352,11 @@ var collectionOperationsMap = {
     collection.distinct(value.field, query, cb);
   },
   '$aggregate': function(collection, query, value, cb) {
-    collection.aggregate(value, function(err, cursor) {
+    collection.aggregate(value, (err, cursor) => {
       if(err) {
         return cb(err);
       }
-      cursor.toArray(function (err, res) {
+      cursor.toArray((err, res) => {
         if(err) {
           return cb(err);
         }
