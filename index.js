@@ -1,6 +1,6 @@
-var async = require('async');
-var mongodb = require('mongodb');
-var DB = require('@teamwork/sharedb').DB;
+const async = require('async');
+const mongodb = require('mongodb');
+const DB = require('@teamwork/sharedb').DB;
 
 
 class ShareDbMongo extends DB {
@@ -58,31 +58,31 @@ class ShareDbMongo extends DB {
 
   getCollection(collectionName, callback) {
     // Check the collection name
-    var err = this.validateCollectionName(collectionName);
+    const err = this.validateCollectionName(collectionName);
     if (err) return callback(err);
     // Gotcha: calls back sync if connected or async if not
     this.getDbs((err, mongo) => {
       if (err) return callback(err);
-      var collection = mongo.db().collection(collectionName);
+      const collection = mongo.db().collection(collectionName);
       return callback(null, collection);
     });
   }
 
   _getCollectionPoll(collectionName, callback) {
     // Check the collection name
-    var err = this.validateCollectionName(collectionName);
+    const err = this.validateCollectionName(collectionName);
     if (err) return callback(err);
     // Gotcha: calls back sync if connected or async if not
     this.getDbs((err, mongo, mongoPoll) => {
       if (err) return callback(err);
-      var collection = (mongoPoll || mongo).db().collection(collectionName);
+      const collection = (mongoPoll || mongo).db().collection(collectionName);
       return callback(null, collection);
     });
   }
 
   getCollectionPoll(collectionName, callback) {
     if (this.pollDelay) {
-      var self = this;
+      const self = this;
       setTimeout(() => {
         self._getCollectionPoll(collectionName, callback);
       }, this.pollDelay);
@@ -93,7 +93,7 @@ class ShareDbMongo extends DB {
 
   getDbs(callback) {
     if (this.closed) {
-      var err = ShareDbMongo.alreadyClosedError();
+      const err = ShareDbMongo.alreadyClosedError();
       return callback(err);
     }
     // We consider ouself ready to reply if this.mongo is defined and don't check
@@ -104,9 +104,9 @@ class ShareDbMongo extends DB {
   }
 
   _flushPendingConnect() {
-    var pendingConnect = this.pendingConnect;
+    const pendingConnect = this.pendingConnect;
     this.pendingConnect = null;
-    for (var i = 0; i < pendingConnect.length; i++) {
+    for (let i = 0; i < pendingConnect.length; i++) {
       pendingConnect[i](null, this.mongo, this.mongoPoll);
     }
   }
@@ -124,9 +124,9 @@ class ShareDbMongo extends DB {
     //
     // Throw errors in this function if we fail to connect, since we aren't
     // implementing a way to retry
-    var self = this;
+    const self = this;
     if (options.mongoPoll) {
-      var tasks;
+      let tasks;
       if (typeof mongo === 'function') {
         tasks = {mongo, mongoPoll: options.mongoPoll};
       } else {
@@ -147,7 +147,7 @@ class ShareDbMongo extends DB {
       });
       return;
     }
-    var finish = (err, db) => {
+    const finish = (err, db) => {
       if (err) throw err;
       self.mongo = db;
       self._flushPendingConnect();
@@ -165,7 +165,7 @@ class ShareDbMongo extends DB {
         if (err) throw err;
       };
     }
-    var self = this;
+    const self = this;
     this.getDbs((err, mongo, mongoPoll) => {
       if (err) return callback(err);
       self.closed = true;
@@ -180,10 +180,10 @@ class ShareDbMongo extends DB {
   // **** Commit methods
 
   commit(collectionName, id, op, snapshot, options, callback) {
-    var self = this;
+    const self = this;
     this._writeOp(collectionName, id, op, snapshot, (err, result) => {
       if (err) return callback(err);
-      var opId = result.insertedId;
+      const opId = result.insertedId;
       self._writeSnapshot(collectionName, id, snapshot, opId, (err, succeeded) => {
         if (succeeded) return callback(err, succeeded);
         // Cleanup unsuccessful op if snapshot write failed. This is not
@@ -197,12 +197,12 @@ class ShareDbMongo extends DB {
 
   _writeOp(collectionName, id, op, snapshot, callback) {
     if (typeof op.v !== 'number') {
-      var err = ShareDbMongo.invalidOpVersionError(collectionName, id, op.v);
+      const err = ShareDbMongo.invalidOpVersionError(collectionName, id, op.v);
       return callback(err);
     }
     this.getOpCollection(collectionName, (err, opCollection) => {
       if (err) return callback(err);
-      var doc = shallowClone(op);
+      const doc = shallowClone(op);
       doc.d = id;
       doc.o = snapshot._opLink;
       opCollection.insertOne(doc, callback);
@@ -219,7 +219,7 @@ class ShareDbMongo extends DB {
   _writeSnapshot(collectionName, id, snapshot, opLink, callback) {
     this.getCollection(collectionName, (err, collection) => {
       if (err) return callback(err);
-      var doc = castToDoc(id, snapshot, opLink);
+      const doc = castToDoc(id, snapshot, opLink);
       if (doc._v === 1) {
         collection.insertOne(doc, (err, result) => {
           if (err) {
@@ -235,7 +235,7 @@ class ShareDbMongo extends DB {
       } else {
         collection.replaceOne({_id: id, _v: doc._v - 1}, doc, (err, result) => {
           if (err) return callback(err);
-          var succeeded = !!result.modifiedCount;
+          const succeeded = !!result.modifiedCount;
           callback(null, succeeded);
         });
       }
@@ -247,11 +247,11 @@ class ShareDbMongo extends DB {
   getSnapshot(collectionName, id, fields, options, callback) {
     this.getCollection(collectionName, (err, collection) => {
       if (err) return callback(err);
-      var query = {_id: id};
-      var projection = getProjection(fields, options);
+      const query = {_id: id};
+      const projection = getProjection(fields, options);
       collection.find(query).limit(1).project(projection).next((err, doc) => {
         if (err) return callback(err);
-        var snapshot = (doc) ? castToSnapshot(doc) : new MongoSnapshot(id, 0, null, undefined);
+        const snapshot = (doc) ? castToSnapshot(doc) : new MongoSnapshot(id, 0, null, undefined);
         callback(null, snapshot);
       });
     });
@@ -260,18 +260,18 @@ class ShareDbMongo extends DB {
   getSnapshotBulk(collectionName, ids, fields, options, callback) {
     this.getCollection(collectionName, (err, collection) => {
       if (err) return callback(err);
-      var query = {_id: {$in: ids}};
-      var projection = getProjection(fields, options);
+      const query = {_id: {$in: ids}};
+      const projection = getProjection(fields, options);
       collection.find(query).project(projection).toArray((err, docs) => {
         if (err) return callback(err);
-        var snapshotMap = {};
-        for (var i = 0; i < docs.length; i++) {
-          var snapshot = castToSnapshot(docs[i]);
+        const snapshotMap = {};
+        for (let i = 0; i < docs.length; i++) {
+          const snapshot = castToSnapshot(docs[i]);
           snapshotMap[snapshot.id] = snapshot;
         }
-        var uncreated = [];
-        for (var i = 0; i < ids.length; i++) {
-          var id = ids[i];
+        const uncreated = [];
+        for (let i = 0; i < ids.length; i++) {
+          const id = ids[i];
           if (snapshotMap[id]) continue;
           snapshotMap[id] = new MongoSnapshot(id, 0, null, undefined);
         }
@@ -300,11 +300,11 @@ class ShareDbMongo extends DB {
 
   // Get and return the op collection from mongo, ensuring it has the op index.
   getOpCollection(collectionName, callback) {
-    var self = this;
+    const self = this;
     this.getDbs((err, mongo) => {
       if (err) return callback(err);
-      var name = self.getOplogCollectionName(collectionName);
-      var collection = mongo.db().collection(name);
+      const name = self.getOplogCollectionName(collectionName);
+      const collection = mongo.db().collection(name);
       // Given the potential problems with creating indexes on the fly, it might
       // be preferrable to disable automatic creation
       if (self.disableIndexCreation) {
@@ -334,32 +334,32 @@ class ShareDbMongo extends DB {
 
   getOpsToSnapshot(collectionName, id, from, snapshot, options, callback) {
     if (snapshot._opLink == null) {
-      var err = ShareDbMongo.missingLastOperationError(collectionName, id);
+      const err = ShareDbMongo.missingLastOperationError(collectionName, id);
       return callback(err);
     }
     this._getOps(collectionName, id, from, options, (err, ops) => {
       if (err) return callback(err);
-      var filtered = getLinkedOps(ops, null, snapshot._opLink);
-      var err = checkOpsFrom(collectionName, id, filtered, from);
+      const filtered = getLinkedOps(ops, null, snapshot._opLink);
+      err = checkOpsFrom(collectionName, id, filtered, from);
       if (err) return callback(err);
       callback(null, filtered);
     });
   }
 
   getOps(collectionName, id, from, to, options, callback) {
-    var self = this;
+    const self = this;
     this._getSnapshotOpLink(collectionName, id, (err, doc) => {
       if (err) return callback(err);
       if (doc) {
         if (isCurrentVersion(doc, from)) {
           return callback(null, []);
         }
-        var err = doc && checkDocHasOp(collectionName, id, doc);
+        err = doc && checkDocHasOp(collectionName, id, doc);
         if (err) return callback(err);
       }
       self._getOps(collectionName, id, from, options, (err, ops) => {
         if (err) return callback(err);
-        var filtered = filterOps(ops, doc, to);
+        const filtered = filterOps(ops, doc, to);
         var err = checkOpsFrom(collectionName, id, filtered, from);
         if (err) return callback(err);
         callback(null, filtered);
@@ -368,19 +368,19 @@ class ShareDbMongo extends DB {
   }
 
   getOpsBulk(collectionName, fromMap, toMap, options, callback) {
-    var self = this;
-    var ids = Object.keys(fromMap);
+    const self = this;
+    const ids = Object.keys(fromMap);
     this._getSnapshotOpLinkBulk(collectionName, ids, (err, docs) => {
       if (err) return callback(err);
-      var docMap = getDocMap(docs);
+      const docMap = getDocMap(docs);
       // Add empty array for snapshot versions that are up to date and create
       // the query conditions for ops that we need to get
-      var conditions = [];
-      var opsMap = {};
-      for (var i = 0; i < ids.length; i++) {
-        var id = ids[i];
-        var doc = docMap[id];
-        var from = fromMap[id];
+      const conditions = [];
+      const opsMap = {};
+      for (let i = 0; i < ids.length; i++) {
+        const id = ids[i];
+        const doc = docMap[id];
+        const from = fromMap[id];
         if (doc) {
           if (isCurrentVersion(doc, from)) {
             opsMap[id] = [];
@@ -389,7 +389,7 @@ class ShareDbMongo extends DB {
           var err = checkDocHasOp(collectionName, id, doc);
           if (err) return callback(err);
         }
-        var condition = getOpsQuery(id, from);
+        const condition = getOpsQuery(id, from);
         conditions.push(condition);
       }
       // Return right away if none of the snapshot versions are newer than the
@@ -398,13 +398,13 @@ class ShareDbMongo extends DB {
       // Otherwise, get all of the ops that are newer
       self._getOpsBulk(collectionName, conditions, options, (err, opsBulk) => {
         if (err) return callback(err);
-        for (var i = 0; i < conditions.length; i++) {
-          var id = conditions[i].d;
-          var ops = opsBulk[id];
-          var doc = docMap[id];
-          var from = fromMap[id];
-          var to = toMap && toMap[id];
-          var filtered = filterOps(ops, doc, to);
+        for (let i = 0; i < conditions.length; i++) {
+          const id = conditions[i].d;
+          const ops = opsBulk[id];
+          const doc = docMap[id];
+          const from = fromMap[id];
+          const to = toMap && toMap[id];
+          const filtered = filterOps(ops, doc, to);
           var err = checkOpsFrom(collectionName, id, filtered, from);
           if (err) return callback(err);
           opsMap[id] = filtered;
@@ -417,12 +417,12 @@ class ShareDbMongo extends DB {
   _getOps(collectionName, id, from, options, callback) {
     this.getOpCollection(collectionName, (err, opCollection) => {
       if (err) return callback(err);
-      var query = getOpsQuery(id, from);
+      const query = getOpsQuery(id, from);
       // Exclude the `d` field, which is only for use internal to livedb-mongo.
       // Also exclude the `m` field, which can be used to store metadata on ops
       // for tracking purposes
-      var projection = (options && options.metadata) ? {d: 0} : {d: 0, m: 0};
-      var sort = {v: 1};
+      const projection = (options && options.metadata) ? {d: 0} : {d: 0, m: 0};
+      const sort = {v: 1};
       opCollection.find(query).project(projection).sort(sort).toArray(callback);
     });
   }
@@ -430,11 +430,11 @@ class ShareDbMongo extends DB {
   _getOpsBulk(collectionName, conditions, options, callback) {
     this.getOpCollection(collectionName, (err, opCollection) => {
       if (err) return callback(err);
-      var query = {$or: conditions};
+      const query = {$or: conditions};
       // Exclude the `m` field, which can be used to store metadata on ops for
       // tracking purposes
-      var projection = (options && options.metadata) ? null : {m: 0};
-      var stream = opCollection.find(query).project(projection).stream();
+      const projection = (options && options.metadata) ? null : {m: 0};
+      const stream = opCollection.find(query).project(projection).stream();
       readOpsBulk(stream, callback);
     });
   }
@@ -442,8 +442,8 @@ class ShareDbMongo extends DB {
   _getSnapshotOpLink(collectionName, id, callback) {
     this.getCollection(collectionName, (err, collection) => {
       if (err) return callback(err);
-      var query = {_id: id};
-      var projection = {_id: 0, _o: 1, _v: 1};
+      const query = {_id: id};
+      const projection = {_id: 0, _o: 1, _v: 1};
       collection.find(query).limit(1).project(projection).next(callback);
     });
   }
@@ -451,8 +451,8 @@ class ShareDbMongo extends DB {
   _getSnapshotOpLinkBulk(collectionName, ids, callback) {
     this.getCollection(collectionName, (err, collection) => {
       if (err) return callback(err);
-      var query = {_id: {$in: ids}};
-      var projection = {_o: 1, _v: 1};
+      const query = {_id: {$in: ids}};
+      const projection = {_o: 1, _v: 1};
       collection.find(query).project(projection).toArray(callback);
     });
   }
@@ -460,7 +460,7 @@ class ShareDbMongo extends DB {
   // **** Query methods
 
   _query(collection, inputQuery, projection, callback) {
-    var parsed = this._getSafeParsedQuery(inputQuery, callback);
+    const parsed = this._getSafeParsedQuery(inputQuery, callback);
     if (!parsed) return;
 
     // Collection operations such as $aggregate run on the whole
@@ -481,16 +481,16 @@ class ShareDbMongo extends DB {
 
     // No collection operations were used. Create an initial cursor for
     // the query, that can be transformed later.
-    var cursor = collection.find(parsed.query).project(projection);
+    let cursor = collection.find(parsed.query).project(projection);
 
     // Cursor transforms such as $skip transform the cursor into a new
     // one. If multiple transforms are specified on inputQuery, they all
     // run.
-    for (var key in parsed.cursorTransforms) {
-      var transform = cursorTransformsMap[key];
+    for (const key in parsed.cursorTransforms) {
+      const transform = cursorTransformsMap[key];
       cursor = transform(cursor, parsed.cursorTransforms[key]);
       if (!cursor) {
-        var err = ShareDbMongo.malformedQueryOperatorError(key);
+        const err = ShareDbMongo.malformedQueryOperatorError(key);
         return callback(err);
       }
     }
@@ -517,15 +517,15 @@ class ShareDbMongo extends DB {
   }
 
   query(collectionName, inputQuery, fields, options, callback) {
-    var self = this;
+    const self = this;
     this.getCollection(collectionName, (err, collection) => {
       if (err) return callback(err);
-      var projection = getProjection(fields, options);
+      const projection = getProjection(fields, options);
       self._query(collection, inputQuery, projection, (err, results, extra) => {
         if (err) return callback(err);
-        var snapshots = [];
-        for (var i = 0; i < results.length; i++) {
-          var snapshot = castToSnapshot(results[i]);
+        const snapshots = [];
+        for (let i = 0; i < results.length; i++) {
+          const snapshot = castToSnapshot(results[i]);
           snapshots.push(snapshot);
         }
         callback(null, snapshots, extra);
@@ -534,14 +534,14 @@ class ShareDbMongo extends DB {
   }
 
   queryPoll(collectionName, inputQuery, options, callback) {
-    var self = this;
+    const self = this;
     this.getCollectionPoll(collectionName, (err, collection) => {
       if (err) return callback(err);
-      var projection = {_id: 1};
+      const projection = {_id: 1};
       self._query(collection, inputQuery, projection, (err, results, extra) => {
         if (err) return callback(err);
-        var ids = [];
-        for (var i = 0; i < results.length; i++) {
+        const ids = [];
+        for (let i = 0; i < results.length; i++) {
           ids.push(results[i]._id);
         }
         callback(null, ids, extra);
@@ -550,13 +550,13 @@ class ShareDbMongo extends DB {
   }
 
   queryPollDoc(collectionName, id, inputQuery, options, callback) {
-    var self = this;
+    const self = this;
     self.getCollectionPoll(collectionName, (err, collection) => {
-      var parsed = self._getSafeParsedQuery(inputQuery, callback);
+      const parsed = self._getSafeParsedQuery(inputQuery, callback);
       if (!parsed) return;
 
       // Run the query against a particular mongo document by adding an _id filter
-      var queryId = parsed.query._id;
+      const queryId = parsed.query._id;
       if (queryId && typeof queryId === 'object') {
         // Check if the query contains the id directly in the common pattern of
         // a query for a specific list of ids, such as {_id: {$in: [1, 2, 3]}}
@@ -595,10 +595,10 @@ class ShareDbMongo extends DB {
 
   // Can we poll by checking the query limited to the particular doc only?
   canPollDoc(collectionName, query) {
-    for (var operation in collectionOperationsMap) {
+    for (let operation in collectionOperationsMap) {
       if (query.hasOwnProperty(operation)) return false;
     }
-    for (var operation in cursorOperationsMap) {
+    for (let operation in cursorOperationsMap) {
       if (query.hasOwnProperty(operation)) return false;
     }
 
@@ -628,10 +628,10 @@ class ShareDbMongo extends DB {
     // Right now, always re-poll if using a collection operation such as
     // $distinct or a cursor operation such as $count. This could be
     // optimized further in some cases.
-    for (var operation in collectionOperationsMap) {
+    for (let operation in collectionOperationsMap) {
       if (query.hasOwnProperty(operation)) return false;
     }
-    for (var operation in cursorOperationsMap) {
+    for (let operation in cursorOperationsMap) {
       if (query.hasOwnProperty(operation)) return false;
     }
 
@@ -639,7 +639,7 @@ class ShareDbMongo extends DB {
     // thrown, it skips polling -- we can't poll an invalid query. So in
     // the code below, we work under the assumption that `query` is
     // valid. If an error is thrown, that's fine.
-    var fields = getFields(query);
+    const fields = getFields(query);
 
     return !opContainsAnyField(op.op, fields);
   }
@@ -652,7 +652,7 @@ class ShareDbMongo extends DB {
       return ShareDbMongo.$queryDeprecatedError();
     }
 
-    var validMongoErr = checkValidMongo(query);
+    const validMongoErr = checkValidMongo(query);
     if (validMongoErr) return validMongoErr;
 
     if (!this.allowJSQueries) {
@@ -672,22 +672,23 @@ class ShareDbMongo extends DB {
   // Parses a query and makes it safe against deleted docs. On error,
   // call the callback and return null.
   _getSafeParsedQuery(inputQuery, callback) {
-    var err = this.checkQuery(inputQuery);
+    let err = this.checkQuery(inputQuery);
     if (err) {
       callback(err);
       return null;
     }
 
     try {
-      var parsed = parseQuery(inputQuery);
+      const parsed = parseQuery(inputQuery);
+      makeQuerySafe(parsed.query);
+      return parsed;
     } catch (err) {
       err = ShareDbMongo.parseQueryError(err);
       callback(err);
       return null;
     }
 
-    makeQuerySafe(parsed.query);
-    return parsed;
+    
   }
 
   // Bad request errors
@@ -775,15 +776,15 @@ class ShareDbMongo extends DB {
 ShareDbMongo.prototype.projectsSnapshots = true;
 
 DB.prototype.getCommittedOpVersion = function(collectionName, id, snapshot, op, options, callback) {
-  var self = this;
+  const self = this;
   this.getOpCollection(collectionName, (err, opCollection) => {
     if (err) return callback(err);
-    var query = {
+    const query = {
       src: op.src,
       seq: op.seq
     };
-    var projection = {v: 1, _id: 0};
-    var sort = {v: 1};
+    const projection = {v: 1, _id: 0};
+    const sort = {v: 1};
     // Find the earliest version at which the op may have been committed.
     // Since ops are optimistically written prior to writing the snapshot, the
     // op could end up being written multiple times or have been written but
@@ -797,11 +798,11 @@ DB.prototype.getCommittedOpVersion = function(collectionName, id, snapshot, op, 
       // If we do find an op with the same src and seq, we still have to get
       // the ops from the snapshot to figure out if the op was actually
       // committed already, and at what version in case of multiple matches
-      var from = doc.v;
+      const from = doc.v;
       self.getOpsToSnapshot(collectionName, id, from, snapshot, options, (err, ops) => {
         if (err) return callback(err);
-        for (var i = ops.length; i--;) {
-          var item = ops[i];
+        for (let i = ops.length; i--;) {
+          const item = ops[i];
           if (op.src === item.src && op.seq === item.seq) {
             return callback(null, item.v);
           }
@@ -829,9 +830,9 @@ function isCurrentVersion(doc, version) {
 }
 
 function getDocMap(docs) {
-  var docMap = {};
-  for (var i = 0; i < docs.length; i++) {
-    var doc = docs[i];
+  const docMap = {};
+  for (let i = 0; i < docs.length; i++) {
+    const doc = docs[i];
     docMap[doc._id] = doc;
   }
   return docMap;
@@ -865,7 +866,7 @@ function filterOps(ops, doc, to) {
     // op that gets maintained if two are written as a result of two
     // simultanous delete commits. Thus, the _id of the op should *not* be
     // assumed to be consistent in the future.
-    var deleteOp = getLatestDeleteOp(ops);
+    const deleteOp = getLatestDeleteOp(ops);
     // Don't return any ops if we don't find a delete operation, which is the
     // correct thing to do if the doc was just created and the op has been
     // written but not the snapshot. Note that this will simply return no ops
@@ -877,16 +878,16 @@ function filterOps(ops, doc, to) {
 }
 
 function getLatestDeleteOp(ops) {
-  for (var i = ops.length; i--;) {
-    var op = ops[i];
+  for (let i = ops.length; i--;) {
+    const op = ops[i];
     if (op.del) return op;
   }
 }
 
 function getLinkedOps(ops, to, link) {
-  var linkedOps = []
-  for (var i = ops.length; i-- && link;) {
-    var op = ops[i];
+  const linkedOps = [];
+  for (let i = ops.length; i-- && link;) {
+    const op = ops[i];
     if (link.equals ? !link.equals(op._id) : link !== op._id) continue;
     link = op.o;
     if (to == null || op.v < to) {
@@ -905,8 +906,8 @@ function getOpsQuery(id, from) {
 }
 
 function readOpsBulk(stream, callback) {
-  var opsMap = {};
-  var errored;
+  const opsMap = {};
+  let errored;
   stream.on('error', err => {
     errored = true;
     return callback(err);
@@ -914,14 +915,14 @@ function readOpsBulk(stream, callback) {
   stream.on('end', () => {
     if (errored) return;
     // Sort ops for each doc in ascending order by version
-    for (var id in opsMap) {
+    for (const id in opsMap) {
       opsMap[id].sort((a, b) => a.v - b.v);
     }
     callback(null, opsMap);
   });
   // Read each op and push onto a list for the appropriate doc
   stream.on('data', op => {
-    var id = op.d;
+    const id = op.d;
     if (opsMap[id]) {
       opsMap[id].push(op);
     } else {
@@ -932,7 +933,7 @@ function readOpsBulk(stream, callback) {
 }
 
 function getFields(query) {
-  var fields = {};
+  const fields = {};
   getInnerFields(query.$orderby, fields);
   getInnerFields(query.$sort, fields);
   getInnerFields(query, fields);
@@ -941,25 +942,25 @@ function getFields(query) {
 
 function getInnerFields(params, fields) {
   if (!params) return;
-  for (var key in params) {
-    var value = params[key];
+  for (const key in params) {
+    const value = params[key];
     if (key === '$not') {
       getInnerFields(value, fields);
     } else if (key === '$or' || key === '$and' || key === '$nor') {
-      for (var i = 0; i < value.length; i++) {
-        var item = value[i];
+      for (let i = 0; i < value.length; i++) {
+        const item = value[i];
         getInnerFields(item, fields);
       }
     } else if (key[0] !== '$') {
-      var property = key.split('.')[0];
+      const property = key.split('.')[0];
       fields[property] = true;
     }
   }
 }
 
 function opContainsAnyField(op, fields) {
-  for (var i = 0; i < op.length; i++) {
-    var component = op[i];
+  for (let i = 0; i < op.length; i++) {
+    const component = op[i];
     if (component.p.length === 0) {
       return true;
     } else if (fields[component.p[0]]) {
@@ -978,11 +979,11 @@ function opContainsAnyField(op, fields) {
 //
 // Return {code: ..., message: ...} on error.
 function checkValidMongo(query) {
-  var collectionOperationKey = null; // only one allowed
-  var foundCursorMethod = false; // transform or operation
-  var cursorOperationKey = null; // only one allowed
+  let collectionOperationKey = null; // only one allowed
+  let foundCursorMethod = false; // transform or operation
+  let cursorOperationKey = null; // only one allowed
 
-  for (var key in query) {
+  for (const key in query) {
     if (key[0] === '$') {
       if (collectionOperationsMap[key]) {
         // Found collection operation. Check that it's unique.
@@ -1065,17 +1066,17 @@ function parseQuery(inputQuery) {
   //   cursorOperationValue: 2
   // }
 
-  var query = {};
-  var collectionOperationKey = null;
-  var collectionOperationValue = null;
-  var cursorTransforms = {};
-  var cursorOperationKey = null;
-  var cursorOperationValue = null;
+  const query = {};
+  let collectionOperationKey = null;
+  let collectionOperationValue = null;
+  const cursorTransforms = {};
+  let cursorOperationKey = null;
+  let cursorOperationValue = null;
 
   if (inputQuery.$query) {
     throw new Error("unexpected $query: should have called checkQuery");
   } else {
-    for (var key in inputQuery) {
+    for (const key in inputQuery) {
       if (collectionOperationsMap[key]) {
         collectionOperationKey = key;
         collectionOperationValue = inputQuery[key];
@@ -1152,7 +1153,7 @@ function deletedDocCouldSatisfyQuery(query) {
   // operators.
   if (query.hasOwnProperty('$and')) {
     if (Array.isArray(query.$and)) {
-      for (var i = 0; i < query.$and.length; i++) {
+      for (let i = 0; i < query.$and.length; i++) {
         if (!deletedDocCouldSatisfyQuery(query.$and[i])) {
           return false;
         }
@@ -1166,7 +1167,7 @@ function deletedDocCouldSatisfyQuery(query) {
 
   if (query.hasOwnProperty('$or')) {
     if (Array.isArray(query.$or)) {
-      for (var i = 0; i < query.$or.length; i++) {
+      for (let i = 0; i < query.$or.length; i++) {
         if (deletedDocCouldSatisfyQuery(query.$or[i])) {
           return true;
         }
@@ -1178,7 +1179,7 @@ function deletedDocCouldSatisfyQuery(query) {
     }
   }
 
-  for (var prop in query) {
+  for (const prop in query) {
     // Ignore fields that remain set on deleted docs
     if (
       prop === '_id' ||
@@ -1219,11 +1220,11 @@ function couldMatchNull(clause) {
     // implied 'and' relationship, e.g. {$gt: 3, $lt: 6}. If every
     // part of the clause could match null then the full clause could
     // match null.
-    for (var prop in clause) {
-      var value = clause[prop];
+    for (const prop in clause) {
+      const value = clause[prop];
       if (prop === '$in' && Array.isArray(value)) {
-        var partCouldMatchNull = false;
-        for (var i = 0; i < value.length; i++) {
+        let partCouldMatchNull = false;
+        for (let i = 0; i < value.length; i++) {
           if (value[i] === null) {
             partCouldMatchNull = true;
             break;
@@ -1260,8 +1261,8 @@ function couldMatchNull(clause) {
 }
 
 function castToDoc(id, snapshot, opLink) {
-  var data = snapshot.data;
-  var doc =
+  const data = snapshot.data;
+  const doc =
     (isObject(data)) ? shallowClone(data) :
     (data === undefined) ? {} :
     {_data: data};
@@ -1274,12 +1275,12 @@ function castToDoc(id, snapshot, opLink) {
 }
 
 function castToSnapshot(doc) {
-  var id = doc._id;
-  var version = doc._v;
-  var type = doc._type;
-  var data = doc._data;
-  var meta = doc._m;
-  var opLink = doc._o;
+  const id = doc._id;
+  const version = doc._v;
+  const type = doc._type;
+  let data = doc._data;
+  const meta = doc._m;
+  const opLink = doc._o;
   if (type == null) {
     return new MongoSnapshot(id, version, null, undefined, meta, opLink);
   }
@@ -1308,8 +1309,8 @@ function isObject(value) {
 }
 
 function shallowClone(object) {
-  var out = {};
-  for (var key in object) {
+  const out = {};
+  for (const key in object) {
     out[key] = object[key];
   }
   return out;
@@ -1337,8 +1338,8 @@ function getProjection(fields, options) {
   // Do not project when called by ShareDB submit
   if (fields.$submit) return;
 
-  var projection = {};
-  for (var key in fields) {
+  const projection = {};
+  for (const key in fields) {
     projection[key] = 1;
   }
   projection._type = 1;
@@ -1347,7 +1348,7 @@ function getProjection(fields, options) {
   return projection;
 }
 
-var collectionOperationsMap = {
+const collectionOperationsMap = {
   '$distinct': function(collection, query, value, cb) {
     collection.distinct(value.field, query, cb);
   },
@@ -1367,10 +1368,10 @@ var collectionOperationsMap = {
   },
   '$mapReduce': function(collection, query, value, cb) {
     if (typeof value !== 'object') {
-      var err = ShareDbMongo.malformedQueryOperatorError('$mapReduce');
+      const err = ShareDbMongo.malformedQueryOperatorError('$mapReduce');
       return cb(err);
     }
-    var mapReduceOptions = {
+    const mapReduceOptions = {
       query,
       out: {inline: 1},
       scope: value.scope || {}
@@ -1380,7 +1381,7 @@ var collectionOperationsMap = {
   }
 };
 
-var cursorOperationsMap = {
+const cursorOperationsMap = {
   '$count': function(cursor, value, cb) {
     cursor.count(cb);
   },
@@ -1392,7 +1393,7 @@ var cursorOperationsMap = {
   }
 };
 
-var cursorTransformsMap = {
+const cursorTransformsMap = {
   '$batchSize': function(cursor, size) { return cursor.batchSize(size); },
   '$comment': function(cursor, text) { return cursor.comment(text); },
   '$hint': function(cursor, index) { return cursor.hint(index); },
