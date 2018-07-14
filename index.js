@@ -284,7 +284,7 @@ class ShareDbMongo extends DB {
 
   // Overwrite me if you want to change this behaviour.
   getOplogCollectionName(collectionName) {
-    return 'o_' + collectionName;
+    return `o_${collectionName}`;
   }
 
   validateCollectionName(collectionName) {
@@ -695,12 +695,12 @@ class ShareDbMongo extends DB {
   static invalidOpVersionError(collectionName, id, v) {
     return {
       code: 4101,
-      message: 'Invalid op version ' + collectionName + '.' + id + ' ' + op.v
+      message: `Invalid op version ${collectionName}.${id} ${op.v}`
     };
   }
 
   static invalidCollectionError(collectionName) {
-    return {code: 4102, message: 'Invalid collection name ' + collectionName};
+    return {code: 4102, message: `Invalid collection name ${collectionName}`};
   }
 
   static $whereDisabledError() {
@@ -720,30 +720,27 @@ class ShareDbMongo extends DB {
   }
 
   static malformedQueryOperatorError(operator) {
-    return {code: 4107, message: "Malformed query operator: " + operator};
+    return {code: 4107, message: `Malformed query operator: ${operator}`};
   }
 
   static onlyOneCollectionOperationError(operation1, operation2) {
     return {
       code: 4108,
-      message: 'Only one collection operation allowed. ' +
-        'Found ' + operation1 + ' and ' + operation2
+      message: `Only one collection operation allowed. Found ${operation1} and ${operation2}`
     };
   }
 
   static onlyOneCursorOperationError(operation1, operation2) {
     return {
       code: 4109,
-      message: 'Only one cursor operation allowed. ' +
-        'Found ' + operation1 + ' and ' + operation2
+      message: `Only one cursor operation allowed. Found ${operation1} and ${operation2}`
     };
   }
 
   static cursorAndCollectionMethodError(collectionOperation) {
     return {
       code: 4110,
-      message: 'Cursor methods can\'t run after collection method ' +
-        collectionOperation
+      message: `Cursor methods can't run after collection method ${collectionOperation}`
     };
   }
 
@@ -755,14 +752,14 @@ class ShareDbMongo extends DB {
   static missingLastOperationError(collectionName, id) {
     return {
       code: 5102,
-      message: 'Snapshot missing last operation field "_o" ' + collectionName + '.' + id
+      message: `Snapshot missing last operation field "_o" ${collectionName}.${id}`
     };
   }
 
   static missingOpsError(collectionName, id, from) {
     return {
       code: 5103,
-      message: 'Missing ops from requested version ' + collectionName + '.' + id + ' ' + from
+      message: `Missing ops from requested version ${collectionName}.${id} ${from}`
     };
   }
 
