@@ -95,7 +95,7 @@ class ShareDbMongo extends DB {
       const err = ShareDbMongo.alreadyClosedError();
       return callback(err);
     }
-    // We consider ouself ready to reply if this.mongo is defined and don't check
+    // We consider ourself ready to reply if this.mongo is defined and don't check
     // this.mongoPoll, since it is optional and is null by default. Thus, it's
     // important that these two properties are only set together synchronously
     if (this.mongo) return callback(null, this.mongo, this.mongoPoll);
@@ -183,7 +183,7 @@ class ShareDbMongo extends DB {
       this._writeSnapshot(collectionName, id, snapshot, opId, (err, succeeded) => {
         if (succeeded) return callback(err, succeeded);
         // Cleanup unsuccessful op if snapshot write failed. This is not
-        // neccessary for data correctness, but it gets rid of clutter
+        // necessary for data correctness, but it gets rid of clutter
         this._deleteOp(collectionName, opId, removeErr => {
           callback(err || removeErr, succeeded);
         });
@@ -278,7 +278,7 @@ class ShareDbMongo extends DB {
 
   // **** Oplog methods
 
-  // Overwrite me if you want to change this behaviour.
+  // Overwrite me if you want to change this behavior.
   getOplogCollectionName(collectionName) {
     return `o_${collectionName}`;
   }
@@ -301,7 +301,7 @@ class ShareDbMongo extends DB {
       const name = this.getOplogCollectionName(collectionName);
       const collection = mongo.db().collection(name);
       // Given the potential problems with creating indexes on the fly, it might
-      // be preferrable to disable automatic creation
+      // be preferable to disable automatic creation
       if (this.disableIndexCreation) {
         return callback(null, collection);
       }
@@ -567,7 +567,7 @@ class ShareDbMongo extends DB {
             [{_id: id}, {_id: queryId}];
         }
       } else if (queryId && queryId !== id) {
-        // If queryId is a primative value such as a string or number and it
+        // If queryId is a primitive value such as a string or number and it
         // isn't equal to the id, then there is no way this can be a match
         return callback(null, false);
       } else {
@@ -774,7 +774,7 @@ DB.prototype.getCommittedOpVersion = function(collectionName, id, snapshot, op, 
     // Find the earliest version at which the op may have been committed.
     // Since ops are optimistically written prior to writing the snapshot, the
     // op could end up being written multiple times or have been written but
-    // not count as committed if not backreferenced from the snapshot
+    // not count as committed if not back-referenced from the snapshot
     opCollection.find(query).project(projection).sort(sort).limit(1).next((err, doc) => {
       if (err) return callback(err);
       // If we find no op with the same src and seq, we definitely don't have
@@ -850,7 +850,7 @@ function filterOps(ops, doc, to) {
     // ops at the same version, we can grab any of them for this method.
     // However, the _id of the delete op might not ultimately match the delete
     // op that gets maintained if two are written as a result of two
-    // simultanous delete commits. Thus, the _id of the op should *not* be
+    // simultaneous delete commits. Thus, the _id of the op should *not* be
     // assumed to be consistent in the future.
     const deleteOp = getLatestDeleteOp(ops);
     // Don't return any ops if we don't find a delete operation, which is the
@@ -1401,7 +1401,7 @@ const cursorTransformsMap = {
     return cursor.readConcern(level);
   },
   '$readPref': function(cursor, value) {
-    // The Mongo driver cursor method takes two argments. Our queries
+    // The Mongo driver cursor method takes two arguments. Our queries
     // have a single value for the '$readPref' property. Interpret as
     // an object with {mode, tagSet}.
     if (typeof value !== 'object') return null;
