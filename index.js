@@ -82,9 +82,8 @@ class ShareDbMongo extends DB {
 
   getCollectionPoll(collectionName, callback) {
     if (this.pollDelay) {
-      const self = this;
       setTimeout(() => {
-        self._getCollectionPoll(collectionName, callback);
+        this._getCollectionPoll(collectionName, callback);
       }, this.pollDelay);
       return;
     }
@@ -124,33 +123,32 @@ class ShareDbMongo extends DB {
     //
     // Throw errors in this function if we fail to connect, since we aren't
     // implementing a way to retry
-    const self = this;
     if (options.mongoPoll) {
       let tasks;
       if (typeof mongo === 'function') {
         tasks = {mongo, mongoPoll: options.mongoPoll};
       } else {
         tasks = {
-          mongo(parallelCb) {
-            mongodb.connect(mongo, self._mongodbOptions(options.mongoOptions), parallelCb);
+          mongo: (parallelCb) => {
+            mongodb.connect(mongo, this._mongodbOptions(options.mongoOptions), parallelCb);
           },
-          mongoPoll(parallelCb) {
-            mongodb.connect(options.mongoPoll, self._mongodbOptions(options.mongoPollOptions), parallelCb);
+          mongoPoll: (parallelCb) => {
+            mongodb.connect(options.mongoPoll, this._mongodbOptions(options.mongoPollOptions), parallelCb);
           }
         };
       }
       async.parallel(tasks, (err, results) => {
         if (err) throw err;
-        self.mongo = results.mongo;
-        self.mongoPoll = results.mongoPoll;
-        self._flushPendingConnect();
+        this.mongo = results.mongo;
+        this.mongoPoll = results.mongoPoll;
+        this._flushPendingConnect();
       });
       return;
     }
     const finish = (err, db) => {
       if (err) throw err;
-      self.mongo = db;
-      self._flushPendingConnect();
+      this.mongo = db;
+      this._flushPendingConnect();
     };
     if (typeof mongo === 'function') {
       mongo(finish);
@@ -165,10 +163,9 @@ class ShareDbMongo extends DB {
         if (err) throw err;
       };
     }
-    const self = this;
     this.getDbs((err, mongo, mongoPoll) => {
       if (err) return callback(err);
-      self.closed = true;
+      this.closed = true;
       mongo.close(err => {
         if (err) return callback(err);
         if (!mongoPoll) return callback();
@@ -180,15 +177,14 @@ class ShareDbMongo extends DB {
   // **** Commit methods
 
   commit(collectionName, id, op, snapshot, options, callback) {
-    const self = this;
     this._writeOp(collectionName, id, op, snapshot, (err, result) => {
       if (err) return callback(err);
       const opId = result.insertedId;
-      self._writeSnapshot(collectionName, id, snapshot, opId, (err, succeeded) => {
+      this._writeSnapshot(collectionName, id, snapshot, opId, (err, succeeded) => {
         if (succeeded) return callback(err, succeeded);
         // Cleanup unsuccessful op if snapshot write failed. This is not
         // neccessary for data correctness, but it gets rid of clutter
-        self._deleteOp(collectionName, opId, removeErr => {
+        this._deleteOp(collectionName, opId, removeErr => {
           callback(err || removeErr, succeeded);
         });
       });
@@ -300,17 +296,16 @@ class ShareDbMongo extends DB {
 
   // Get and return the op collection from mongo, ensuring it has the op index.
   getOpCollection(collectionName, callback) {
-    const self = this;
     this.getDbs((err, mongo) => {
       if (err) return callback(err);
-      const name = self.getOplogCollectionName(collectionName);
+      const name = this.getOplogCollectionName(collectionName);
       const collection = mongo.db().collection(name);
       // Given the potential problems with creating indexes on the fly, it might
       // be preferrable to disable automatic creation
-      if (self.disableIndexCreation) {
+      if (this.disableIndexCreation) {
         return callback(null, collection);
       }
-      if (self.opIndexes[collectionName]) {
+      if (this.opIndexes[collectionName]) {
         return callback(null, collection);
       }
       // WARNING: Creating indexes automatically like this is quite dangerous in
@@ -325,7 +320,7 @@ class ShareDbMongo extends DB {
         if (err) return callback(err);
         collection.createIndex({src: 1, seq: 1, v: 1}, {background: true}, err => {
           if (err) return callback(err);
-          self.opIndexes[collectionName] = true;
+          this.opIndexes[collectionName] = true;
           callback(null, collection);
         });
       });
@@ -347,7 +342,6 @@ class ShareDbMongo extends DB {
   }
 
   getOps(collectionName, id, from, to, options, callback) {
-    const self = this;
     this._getSnapshotOpLink(collectionName, id, (err, doc) => {
       if (err) return callback(err);
       if (doc) {
@@ -357,10 +351,10 @@ class ShareDbMongo extends DB {
         err = doc && checkDocHasOp(collectionName, id, doc);
         if (err) return callback(err);
       }
-      self._getOps(collectionName, id, from, options, (err, ops) => {
+      this._getOps(collectionName, id, from, options, (err, ops) => {
         if (err) return callback(err);
         const filtered = filterOps(ops, doc, to);
-        var err = checkOpsFrom(collectionName, id, filtered, from);
+        err = checkOpsFrom(collectionName, id, filtered, from);
         if (err) return callback(err);
         callback(null, filtered);
       });
@@ -368,7 +362,6 @@ class ShareDbMongo extends DB {
   }
 
   getOpsBulk(collectionName, fromMap, toMap, options, callback) {
-    const self = this;
     const ids = Object.keys(fromMap);
     this._getSnapshotOpLinkBulk(collectionName, ids, (err, docs) => {
       if (err) return callback(err);
@@ -396,7 +389,7 @@ class ShareDbMongo extends DB {
       // requested versions
       if (!conditions.length) return callback(null, opsMap);
       // Otherwise, get all of the ops that are newer
-      self._getOpsBulk(collectionName, conditions, options, (err, opsBulk) => {
+      this._getOpsBulk(collectionName, conditions, options, (err, opsBulk) => {
         if (err) return callback(err);
         for (let i = 0; i < conditions.length; i++) {
           const id = conditions[i].d;
@@ -517,11 +510,10 @@ class ShareDbMongo extends DB {
   }
 
   query(collectionName, inputQuery, fields, options, callback) {
-    const self = this;
     this.getCollection(collectionName, (err, collection) => {
       if (err) return callback(err);
       const projection = getProjection(fields, options);
-      self._query(collection, inputQuery, projection, (err, results, extra) => {
+      this._query(collection, inputQuery, projection, (err, results, extra) => {
         if (err) return callback(err);
         const snapshots = [];
         for (let i = 0; i < results.length; i++) {
@@ -534,11 +526,10 @@ class ShareDbMongo extends DB {
   }
 
   queryPoll(collectionName, inputQuery, options, callback) {
-    const self = this;
     this.getCollectionPoll(collectionName, (err, collection) => {
       if (err) return callback(err);
       const projection = {_id: 1};
-      self._query(collection, inputQuery, projection, (err, results, extra) => {
+      this._query(collection, inputQuery, projection, (err, results, extra) => {
         if (err) return callback(err);
         const ids = [];
         for (let i = 0; i < results.length; i++) {
@@ -550,9 +541,8 @@ class ShareDbMongo extends DB {
   }
 
   queryPollDoc(collectionName, id, inputQuery, options, callback) {
-    const self = this;
-    self.getCollectionPoll(collectionName, (err, collection) => {
-      const parsed = self._getSafeParsedQuery(inputQuery, callback);
+    this.getCollectionPoll(collectionName, (err, collection) => {
+      const parsed = this._getSafeParsedQuery(inputQuery, callback);
       if (!parsed) return;
 
       // Run the query against a particular mongo document by adding an _id filter
@@ -773,7 +763,6 @@ class ShareDbMongo extends DB {
 ShareDbMongo.prototype.projectsSnapshots = true;
 
 DB.prototype.getCommittedOpVersion = function(collectionName, id, snapshot, op, options, callback) {
-  const self = this;
   this.getOpCollection(collectionName, (err, opCollection) => {
     if (err) return callback(err);
     const query = {
@@ -796,7 +785,7 @@ DB.prototype.getCommittedOpVersion = function(collectionName, id, snapshot, op, 
       // the ops from the snapshot to figure out if the op was actually
       // committed already, and at what version in case of multiple matches
       const from = doc.v;
-      self.getOpsToSnapshot(collectionName, id, from, snapshot, options, (err, ops) => {
+      this.getOpsToSnapshot(collectionName, id, from, snapshot, options, (err, ops) => {
         if (err) return callback(err);
         for (let i = ops.length; i--;) {
           const item = ops[i];
