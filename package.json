@@ -11,16 +11,23 @@
     "@teamwork/sharedb": "^1.2.0"
   },
   "devDependencies": {
+    "@teamwork/sharedb": "^1.2.0",
+    "@teamwork/sharedb-mingo-memory": "^v1.0.3",
     "coveralls": "^3.0.1",
+    "eslint": "^5.1.0",
+    "eslint-config-standard": "^11.0.0",
+    "eslint-plugin-import": "^2.13.0",
+    "eslint-plugin-node": "^6.0.1",
+    "eslint-plugin-promise": "^3.8.0",
+    "eslint-plugin-standard": "^3.1.0",
     "expect.js": "^0.3.1",
     "istanbul": "^0.4.5",
     "mocha": "^5.2.0",
-    "mongodb": "^3.1.0",
-    "@teamwork/sharedb": "^1.2.0",
-    "@teamwork/sharedb-mingo-memory": "^v1.0.3"
+    "mongodb": "^3.1.0"
   },
   "scripts": {
-    "test": "node_modules/.bin/mocha",
+    "test": "mocha",
+    "lint": "eslint --fix index.js",
     "test-cover": "node_modules/istanbul/lib/cli.js cover node_modules/mocha/bin/_mocha"
   },
   "repository": "git://github.com/teamwork/sharedb-mongo.git",
