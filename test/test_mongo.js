@@ -1,15 +1,15 @@
-var expect = require('expect.js');
-var mongodb = require('mongodb');
-var ShareDbMongo = require('../index');
-var getQuery = require('@teamwork/sharedb-mingo-memory/get-query');
+const expect = require('expect.js');
+const mongodb = require('mongodb');
+const ShareDbMongo = require('../index');
+const getQuery = require('@teamwork/sharedb-mingo-memory/get-query');
 
-var mongoUrl = process.env.TEST_MONGO_URL || 'mongodb://localhost:27017/test';
+const mongoUrl = process.env.TEST_MONGO_URL || 'mongodb://localhost:27017/test';
 
 function create(callback) {
-  var db = new ShareDbMongo({mongo: function(shareDbCallback) {
-    mongodb.connect(mongoUrl, { useNewUrlParser: true }, function(err, mongo) {
+  const db = new ShareDbMongo({mongo: function(shareDbCallback) {
+    mongodb.connect(mongoUrl, { useNewUrlParser: true }, (err, mongo) => {
       if (err) return callback(err);
-      mongo.db().dropDatabase(function(err) {
+      mongo.db().dropDatabase(err => {
         if (err) return callback(err);
         shareDbCallback(null, mongo);
         callback(null, db, mongo);
@@ -20,10 +20,10 @@ function create(callback) {
 
 require('@teamwork/sharedb/test/db')({create: create, getQuery: getQuery});
 
-describe('mongo db', function() {
+describe('mongo db', () => {
   beforeEach(function(done) {
-    var self = this;
-    create(function(err, db, mongo) {
+    const self = this;
+    create((err, db, mongo) => {
       if (err) return done(err);
       self.db = db;
       self.mongo = mongo;
@@ -35,12 +35,12 @@ describe('mongo db', function() {
     this.db.close(done);
   });
 
-  describe('indexes', function() {
+  describe('indexes', () => {
     it('adds ops index', function(done) {
-      var mongo = this.mongo;
-      this.db.commit('testcollection', 'foo', {v: 0, create: {}}, {}, null, function(err) {
+      const mongo = this.mongo;
+      this.db.commit('testcollection', 'foo', {v: 0, create: {}}, {}, null, err => {
         if (err) return done(err);
-        mongo.db().collection('o_testcollection').indexInformation(function(err, indexes) {
+        mongo.db().collection('o_testcollection').indexInformation((err, indexes) => {
           if (err) return done(err);
           // Index for getting document(s) ops
           expect(indexes['d_1_v_1']).ok();
@@ -52,12 +52,12 @@ describe('mongo db', function() {
     });
 
     it('respects unique indexes', function(done) {
-      var db = this.db;
-      this.mongo.db().collection('testcollection').createIndex({x: 1}, {unique: true}, function(err) {
+      const db = this.db;
+      this.mongo.db().collection('testcollection').createIndex({x: 1}, {unique: true}, err => {
         if (err) return done(err);
-        db.commit('testcollection', 'foo', {v: 0, create: {}}, {v: 1, data: {x: 7}}, null, function(err, succeeded) {
+        db.commit('testcollection', 'foo', {v: 0, create: {}}, {v: 1, data: {x: 7}}, null, (err, succeeded) => {
           if (err) return done(err);
-          db.commit('testcollection', 'bar', {v: 0, create: {}}, {v: 1, data: {x: 7}}, null, function(err, succeeded) {
+          db.commit('testcollection', 'bar', {v: 0, create: {}}, {v: 1, data: {x: 7}}, null, (err, succeeded) => {
             expect(err && err.code).equal(11000);
             done();
           });
@@ -66,12 +66,12 @@ describe('mongo db', function() {
     });
   });
 
-  describe('security options', function() {
+  describe('security options', () => {
     it('does not allow editing the system collection', function(done) {
-      var db = this.db;
-      db.commit('system', 'test', {v: 0, create: {}}, {}, null, function(err) {
+      const db = this.db;
+      db.commit('system', 'test', {v: 0, create: {}}, {}, null, err => {
         expect(err).ok();
-        db.getSnapshot('system', 'test', null, null, function(err) {
+        db.getSnapshot('system', 'test', null, null, err => {
           expect(err).ok();
           done();
         });
@@ -79,26 +79,26 @@ describe('mongo db', function() {
     });
   });
 
-  describe('query', function() {
+  describe('query', () => {
     // Run query tests for the types of queries supported by ShareDBMingo
     require('@teamwork/sharedb-mingo-memory/test/query')();
 
     it('does not allow $where queries', function(done) {
-      this.db.query('testcollection', {$where: 'true'}, null, null, function(err, results) {
+      this.db.query('testcollection', {$where: 'true'}, null, null, (err, results) => {
         expect(err).ok();
         done();
       });
     });
 
     it('queryPollDoc does not allow $where queries', function(done) {
-      this.db.queryPollDoc('testcollection', 'somedoc', {$where: 'true'}, null, function(err) {
+      this.db.queryPollDoc('testcollection', 'somedoc', {$where: 'true'}, null, err => {
         expect(err).ok();
         done();
       });
     });
 
     it('$query is deprecated', function(done) {
-      this.db.query('testcollection', {$query: {}}, null, null, function(err) {
+      this.db.query('testcollection', {$query: {}}, null, null, err => {
         expect(err).ok();
         expect(err.code).eql(4106);
         done();
@@ -106,7 +106,7 @@ describe('mongo db', function() {
     });
 
     it('only one collection operation allowed', function(done) {
-      this.db.query('testcollection', {$distinct: {y: 1}, $aggregate: {}}, null, null, function(err) {
+      this.db.query('testcollection', {$distinct: {y: 1}, $aggregate: {}}, null, null, err => {
         expect(err).ok();
         expect(err.code).eql(4108);
         done();
@@ -114,7 +114,7 @@ describe('mongo db', function() {
     });
 
     it('only one cursor operation allowed', function(done) {
-      this.db.query('testcollection', {$count: true, $explain: true}, null, null, function(err) {
+      this.db.query('testcollection', {$count: true, $explain: true}, null, null, err => {
         expect(err).ok();
         expect(err.code).eql(4109);
         done();
@@ -122,7 +122,7 @@ describe('mongo db', function() {
     });
 
     it('cursor transform can\'t run after collection operation', function(done) {
-      this.db.query('testcollection', {$distinct: {y: 1}, $sort: {y: 1}}, null, null, function(err) {
+      this.db.query('testcollection', {$distinct: {y: 1}, $sort: {y: 1}}, null, null, err => {
         expect(err).ok();
         expect(err.code).eql(4110);
         done();
@@ -130,7 +130,7 @@ describe('mongo db', function() {
     });
 
     it('cursor operation can\'t run after collection operation', function(done) {
-      this.db.query('testcollection', {$distinct: {y: 1}, $count: true}, null, null, function(err) {
+      this.db.query('testcollection', {$distinct: {y: 1}, $count: true}, null, null, err => {
         expect(err).ok();
         expect(err.code).eql(4110);
         done();
@@ -138,7 +138,7 @@ describe('mongo db', function() {
     });
 
     it('non-object $readPref should return error', function(done) {
-      this.db.query('testcollection', {$readPref: true}, null, null, function(err) {
+      this.db.query('testcollection', {$readPref: true}, null, null, err => {
         expect(err).ok();
         expect(err.code).eql(4107);
         done();
@@ -147,15 +147,15 @@ describe('mongo db', function() {
 
     it('malformed $mapReduce should return error', function(done) {
       this.db.allowJSQueries = true; // required for $mapReduce
-      this.db.query('testcollection', {$mapReduce: true}, null, null, function(err) {
+      this.db.query('testcollection', {$mapReduce: true}, null, null, err => {
         expect(err).ok();
         expect(err.code).eql(4107);
         done();
       });
     });
 
-    describe('queryPollDoc correctly filters on _id', function(done) {
-      var snapshot = {type: 'json0', v: 1, data: {}, id: "test"};
+    describe('queryPollDoc correctly filters on _id', done => {
+      const snapshot = {type: 'json0', v: 1, data: {}, id: "test"};
 
       beforeEach(function(done) {
         this.db.commit('testcollection', snapshot.id, {v: 0, create: {}}, snapshot, null, done);
@@ -188,7 +188,7 @@ describe('mongo db', function() {
           snapshot.id,
           query,
           null,
-          function(err, hasDoc) {
+          (err, hasDoc) => {
             if (err) done(err);
             expect(hasDoc).eql(expectedHasDoc);
             done();
@@ -198,20 +198,20 @@ describe('mongo db', function() {
     });
 
     it('$distinct should perform distinct operation', function(done) {
-      var snapshots = [
+      const snapshots = [
         {type: 'json0', v: 1, data: {x: 1, y: 1}},
         {type: 'json0', v: 1, data: {x: 2, y: 2}},
         {type: 'json0', v: 1, data: {x: 3, y: 2}}
       ];
-      var db = this.db;
-      db.commit('testcollection', 'test1', {v: 0, create: {}}, snapshots[0], null, function(err) {
+      const db = this.db;
+      db.commit('testcollection', 'test1', {v: 0, create: {}}, snapshots[0], null, err => {
         if (err) return done(err);
-        db.commit('testcollection', 'test2', {v: 0, create: {}}, snapshots[1], null, function(err) {
+        db.commit('testcollection', 'test2', {v: 0, create: {}}, snapshots[1], null, err => {
           if (err) return done(err);
-          db.commit('testcollection', 'test3', {v: 0, create: {}}, snapshots[2], null, function(err) {
+          db.commit('testcollection', 'test3', {v: 0, create: {}}, snapshots[2], null, err => {
             if (err) return done(err);
-            var query = {$distinct: {field: 'y'}};
-            db.query('testcollection', query, null, null, function(err, results, extra) {
+            const query = {$distinct: {field: 'y'}};
+            db.query('testcollection', query, null, null, (err, results, extra) => {
               if (err) return done(err);
               expect(extra).eql([1, 2]);
               done();
@@ -222,24 +222,24 @@ describe('mongo db', function() {
     });
 
     it('$aggregate should perform aggregate command', function(done) {
-      var snapshots = [
+      const snapshots = [
         {type: 'json0', v: 1, data: {x: 1, y: 1}},
         {type: 'json0', v: 1, data: {x: 2, y: 2}},
         {type: 'json0', v: 1, data: {x: 3, y: 2}}
       ];
-      var db = this.db;
+      const db = this.db;
       db.allowAggregateQueries = true;
-      db.commit('testcollection', 'test1', {v: 0, create: {}}, snapshots[0], null, function(err) {
+      db.commit('testcollection', 'test1', {v: 0, create: {}}, snapshots[0], null, err => {
         if (err) return done(err);
-        db.commit('testcollection', 'test2', {v: 0, create: {}}, snapshots[1], null, function(err) {
+        db.commit('testcollection', 'test2', {v: 0, create: {}}, snapshots[1], null, err => {
           if (err) return done(err);
-          db.commit('testcollection', 'test3', {v: 0, create: {}}, snapshots[2], null, function(err) {
+          db.commit('testcollection', 'test3', {v: 0, create: {}}, snapshots[2], null, err => {
             if (err) return done(err);
-            var query = {$aggregate: [
+            const query = {$aggregate: [
               {$group: {_id: '$y', count: {$sum: 1}}},
               {$sort: {count: 1}}
             ]};
-            db.query('testcollection', query, null, null, function(err, results, extra) {
+            db.query('testcollection', query, null, null, (err, results, extra) => {
               if (err) return done(err);
               expect(extra).eql([{_id: 1, count: 1}, {_id: 2, count: 2}]);
               done();
@@ -250,42 +250,40 @@ describe('mongo db', function() {
     });
 
     it('does not let you run $aggregate queries without options.allowAggregateQueries', function(done) {
-      var query = {$aggregate: [
+      const query = {$aggregate: [
         {$group: {_id: '$y',count: {$sum: 1}}},
         {$sort: {count: 1}}
       ]};
-      this.db.query('testcollection', query, null, null, function(err, results) {
+      this.db.query('testcollection', query, null, null, (err, results) => {
         expect(err).ok();
         done();
       });
     });
 
     it('does not allow $mapReduce queries by default', function(done) {
-      var snapshots = [
+      const snapshots = [
         {type: 'json0', v: 1, data: {player: 'a', round: 1, score: 5}},
         {type: 'json0', v: 1, data: {player: 'a', round: 2, score: 7}},
         {type: 'json0', v: 1, data: {player: 'b', round: 1, score: 15}}
       ];
-      var db = this.db;
-      db.commit('testcollection', 'test1', {v: 0, create: {}}, snapshots[0], null, function(err) {
+      const db = this.db;
+      db.commit('testcollection', 'test1', {v: 0, create: {}}, snapshots[0], null, err => {
         if (err) return done(err);
-        db.commit('testcollection', 'test2', {v: 0, create: {}}, snapshots[1], null, function(err) {
+        db.commit('testcollection', 'test2', {v: 0, create: {}}, snapshots[1], null, err => {
           if (err) return done(err);
-          db.commit('testcollection', 'test3', {v: 0, create: {}}, snapshots[2], null, function(err) {
+          db.commit('testcollection', 'test3', {v: 0, create: {}}, snapshots[2], null, err => {
             if (err) return done(err);
-            var query = {
+            const query = {
               $mapReduce: {
                 map: function() {
                   emit(this.player, this.score);
                 },
                 reduce: function(key, values) {
-                  return values.reduce(function(t, s) {
-                    return t + s;
-                  });
+                  return values.reduce((t, s) => t + s);
                 }
               }
             };
-            db.query('testcollection', query, null, null, function(err) {
+            db.query('testcollection', query, null, null, err => {
               expect(err).ok();
               done();
             });
@@ -295,32 +293,30 @@ describe('mongo db', function() {
     });
 
     it('$mapReduce queries should work when allowJavaScriptQuery == true', function(done) {
-      var snapshots = [
+      const snapshots = [
         {type: 'json0', v: 1, data: {player: 'a', round: 1, score: 5}},
         {type: 'json0', v: 1, data: {player: 'a', round: 2, score: 7}},
         {type: 'json0', v: 1, data: {player: 'b', round: 1, score: 15}}
       ];
-      var db = this.db;
+      const db = this.db;
       db.allowJSQueries = true;
-      db.commit('testcollection', 'test1', {v: 0, create: {}}, snapshots[0], null, function(err) {
+      db.commit('testcollection', 'test1', {v: 0, create: {}}, snapshots[0], null, err => {
         if (err) return done(err);
-        db.commit('testcollection', 'test2', {v: 0, create: {}}, snapshots[1], null, function(err) {
+        db.commit('testcollection', 'test2', {v: 0, create: {}}, snapshots[1], null, err => {
           if (err) return done(err);
-          db.commit('testcollection', 'test3', {v: 0, create: {}}, snapshots[2], null, function(err) {
+          db.commit('testcollection', 'test3', {v: 0, create: {}}, snapshots[2], null, err => {
             if (err) return done(err);
-            var query = {
+            const query = {
               $mapReduce: {
                 map: function() {
                   emit(this.player, this.score);
                 },
                 reduce: function(key, values) {
-                  return values.reduce(function(t, s) {
-                    return t + s;
-                  });
+                  return values.reduce((t, s) => t + s);
                 }
               }
             };
-            db.query('testcollection', query, null, null, function(err, results, extra) {
+            db.query('testcollection', query, null, null, (err, results, extra) => {
               if (err) return done(err);
               expect(extra).eql([{_id: 'a', value: 12}, {_id: 'b', value: 15}]);
               done();
@@ -332,16 +328,16 @@ describe('mongo db', function() {
   });
 });
 
-describe('mongo db connection', function() {
-  describe('via url string', function() {
+describe('mongo db connection', () => {
+  describe('via url string', () => {
     beforeEach(function(done) {
       this.db = new ShareDbMongo({mongo: mongoUrl});
 
       // This will enqueue the callback, testing the 'pendingConnect'
       // logic.
-      this.db.getDbs(function(err, mongo, mongoPoll) {
+      this.db.getDbs((err, mongo, mongoPoll) => {
         if (err) return done(err);
-        mongo.db().dropDatabase(function(err) {
+        mongo.db().dropDatabase(err => {
           if (err) return done(err);
           done();
         });
@@ -353,12 +349,12 @@ describe('mongo db connection', function() {
     });
 
     it('commit and query', function(done) {
-      var snapshot = {type: 'json0', v: 1, data: {}, id: "test"};
-      var db = this.db;
+      const snapshot = {type: 'json0', v: 1, data: {}, id: "test"};
+      const db = this.db;
 
-      db.commit('testcollection', snapshot.id, {v: 0, create: {}}, snapshot, null, function(err) {
+      db.commit('testcollection', snapshot.id, {v: 0, create: {}}, snapshot, null, err => {
         if (err) return done(err);
-        db.query('testcollection', {}, null, null, function(err, results) {
+        db.query('testcollection', {}, null, null, (err, results) => {
           if (err) return done(err);
           expect(results).eql([snapshot]);
           done();
@@ -367,7 +363,7 @@ describe('mongo db connection', function() {
     });
   });
 
-  describe('via url string with mongoPoll and pollDelay option', function() {
+  describe('via url string with mongoPoll and pollDelay option', () => {
     beforeEach(function(done) {
       this.pollDelay = 1000;
       this.db = new ShareDbMongo({mongo: mongoUrl, mongoPoll: mongoUrl, pollDelay: this.pollDelay});
@@ -379,17 +375,17 @@ describe('mongo db connection', function() {
     });
 
     it('delays queryPoll but not commit', function(done) {
-      var db = this.db;
-      var pollDelay = this.pollDelay;
+      const db = this.db;
+      const pollDelay = this.pollDelay;
 
-      var snapshot = {type: 'json0', v: 1, data: {}, id: "test"};
-      var timeBeforeCommit = new Date;
-      db.commit('testcollection', snapshot.id, {v: 0, create: {}}, snapshot, null, function(err) {
+      const snapshot = {type: 'json0', v: 1, data: {}, id: "test"};
+      const timeBeforeCommit = new Date;
+      db.commit('testcollection', snapshot.id, {v: 0, create: {}}, snapshot, null, err => {
         if (err) return done(err);
         expect((new Date) - timeBeforeCommit).lessThan(pollDelay);
 
-        var timeBeforeQuery = new Date;
-        db.queryPoll('testcollection', {}, null, function(err, results) {
+        const timeBeforeQuery = new Date;
+        db.queryPoll('testcollection', {}, null, (err, results) => {
           if (err) return done(err);
           expect(results.length).eql(1);
           expect((new Date) - timeBeforeQuery).greaterThan(pollDelay);
@@ -400,39 +396,39 @@ describe('mongo db connection', function() {
   });
 });
 
-describe('parse query', function() {
-  var parseQuery = ShareDbMongo._parseQuery;
-  var makeQuerySafe = ShareDbMongo._makeQuerySafe;
+describe('parse query', () => {
+  const parseQuery = ShareDbMongo._parseQuery;
+  const makeQuerySafe = ShareDbMongo._makeQuerySafe;
 
-  var addsType = function(query) {
-    var queryWithTypeNeNull = shallowClone(query);
+  const addsType = query => {
+    const queryWithTypeNeNull = shallowClone(query);
     queryWithTypeNeNull._type = {$type: 2};
-    var parsedQuery = parseQuery(query);
+    const parsedQuery = parseQuery(query);
     makeQuerySafe(parsedQuery.query);
     expect(parsedQuery.query).eql(queryWithTypeNeNull);
   };
 
-  var doesNotModify = function(query) {
-    var parsedQuery = parseQuery(query);
+  const doesNotModify = query => {
+    const parsedQuery = parseQuery(query);
     makeQuerySafe(parsedQuery.query);
     expect(parsedQuery.query).eql(query);
   };
 
-  describe('adds _type: {$type: 2} when necessary', function() {
-    it('basic', function() {
+  describe('adds _type: {$type: 2} when necessary', () => {
+    it('basic', () => {
       addsType({});
       addsType({foo: null});
       doesNotModify({foo: 1});
       addsType({foo: {$bitsAllSet: 1}}); // We don't try to analyze $bitsAllSet
     });
 
-    it('does not modify already set type', function() {
+    it('does not modify already set type', () => {
       doesNotModify({_type: null});
       doesNotModify({_type: 'foo'});
       doesNotModify({_type: {$ne: null}});
     });
 
-    it('ignores fields that remain set on deleted docs', function() {
+    it('ignores fields that remain set on deleted docs', () => {
       addsType({_id: 'x'});
       addsType({_o: 'x'});
       addsType({_v: 2});
@@ -452,13 +448,13 @@ describe('parse query', function() {
       doesNotModify({'_m.mtime': 2, foo: 1});
     });
 
-    it('$ne', function() {
+    it('$ne', () => {
       addsType({foo: {$ne: 1}});
       doesNotModify({foo: {$ne: 1}, bar: 1});
       doesNotModify({foo: {$ne: null}});
     });
 
-    it('comparisons', function() {
+    it('comparisons', () => {
       doesNotModify({foo: {$gt: 1}});
       doesNotModify({foo: {$gte: 1}});
       doesNotModify({foo: {$lt: 1}});
@@ -467,36 +463,36 @@ describe('parse query', function() {
       addsType({foo: {$gte: null, $lte: null}});
     });
 
-    it('$exists', function() {
+    it('$exists', () => {
       doesNotModify({foo: {$exists: true}});
       addsType({foo: {$exists: false}});
       doesNotModify({foo: {$exists: true}, bar: {$exists: false}});
     });
 
-    it('$not', function() {
+    it('$not', () => {
       addsType({$not: {foo: 1}});
       addsType({$not: {foo: null}}); // We don't try to analyze $not
     });
 
-    it('$in', function() {
+    it('$in', () => {
       doesNotModify({foo: {$in: [1, 2, 3]}});
       addsType({foo: {$in: [null, 2, 3]}});
       doesNotModify({foo: {$in: [null, 2, 3]}, bar: 1});
     })
 
-    it('top-level $and', function() {
+    it('top-level $and', () => {
       doesNotModify({$and: [{foo: {$ne: null}}, {bar: {$ne: null}}]});
       doesNotModify({$and: [{foo: {$ne: 1}}, {bar: {$ne: null}}]});
       addsType({$and: [{foo: {$ne: 1}}, {bar: {$ne: 1}}]});
     });
 
-    it('top-level $or', function() {
+    it('top-level $or', () => {
       doesNotModify({$or: [{foo: {$ne: null}}, {bar: {$ne: null}}]});
       addsType({$or: [{foo: {$ne: 1}}, {bar: {$ne: null}}]});
       addsType({$or: [{foo: {$ne: 1}}, {bar: {$ne: 1}}]});
     });
 
-    it('malformed queries', function() {
+    it('malformed queries', () => {
       // if we don't understand the query, definitely don't mark it as
       // "safe as is"
       addsType({$or: {foo: 3}});
@@ -510,8 +506,8 @@ describe('parse query', function() {
 });
 
 function shallowClone(object) {
-  var out = {};
-  for (var key in object) {
+  const out = {};
+  for (const key in object) {
     out[key] = object[key];
   }
   return out;

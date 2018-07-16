@@ -1,12 +1,12 @@
-var expect = require('expect.js');
-var ShareDbMongo = require('../index');
-var checkOp = require('@teamwork/sharedb/lib/ot').checkOp;
+const expect = require('expect.js');
+const ShareDbMongo = require('../index');
+const checkOp = require('@teamwork/sharedb/lib/ot').checkOp;
 
-describe('skipPoll', function() {
+describe('skipPoll', () => {
   // Run a test function against a small sample set of queries
   function testSampleQueries(test) {
     function testInNewCase(query) {
-      it(JSON.stringify(query), function() {
+      it(JSON.stringify(query), () => {
         test(query);
       })
     };
@@ -23,28 +23,28 @@ describe('skipPoll', function() {
     testInNewCase({$distinct: {field: 'a'}});
   }
 
-  describe('noops always skip', function() {
-    testSampleQueries(function(query) {
+  describe('noops always skip', () => {
+    testSampleQueries(query => {
       assertSkips({v: 0}, query);
     });
   });
 
-  describe('creates never skip', function() {
-    testSampleQueries(function(query) {
+  describe('creates never skip', () => {
+    testSampleQueries(query => {
       assertNotSkips({v: 0, create: {type: 'json0', _id: 'dummyid'}}, query);
       assertNotSkips({v: 0, create: {type: 'json0', _id: 'dummyid', a: 1}}, query);
       assertNotSkips({v: 0, create: {type: 'json0', _id: 'dummyid', a: {b: 'foo'}}}, query);
     });
   });
 
-  describe('deletes never skip', function() {
-    testSampleQueries(function(query) {
+  describe('deletes never skip', () => {
+    testSampleQueries(query => {
       assertNotSkips({v: 0, del: true}, query);
     });
   });
 
-  describe('updates', function() {
-    it('never skip for queries returning extra', function() {
+  describe('updates', () => {
+    it('never skip for queries returning extra', () => {
       test({a: 1, $count: true});
       test({$distinct: {field: 'a'}});
 
@@ -55,7 +55,7 @@ describe('skipPoll', function() {
       }
     });
 
-    describe('skip sometimes for queries returning results', function() {
+    describe('skip sometimes for queries returning results', () => {
       test({a: 1}, ['a']);
       test({a: {$in: [1, 2]}}, ['a']);
       test({a: {$nin: [1, 2]}}, ['a']);
@@ -88,19 +88,19 @@ describe('skipPoll', function() {
 
       // 'fields' is an array of top-level fields from which query reads
       function test(query, fields) {
-        describe(JSON.stringify(query), function() {
-          it('empty path changes', function() {
+        describe(JSON.stringify(query), () => {
+          it('empty path changes', () => {
             assertNotSkips({op: [{p: [], dummyOp: 1}]}, query);
           });
 
-          it('top-level field changes', function() {
+          it('top-level field changes', () => {
             assertIfSkips({op: [{p: ['a'], dummyOp: 1}]}, query, !has(fields, 'a'));
             assertIfSkips({op: [{p: ['a', 1], dummyOp: 1}]}, query, !has(fields, 'a'));
             assertIfSkips({op: [{p: ['x'], dummyOp: 1}]}, query, !has(fields, 'x'));
             assertIfSkips({op: [{p: ['x', 'y'], dummyOp: 1}]}, query, !has(fields, 'x'));
           });
 
-          it('multiple ops', function() {
+          it('multiple ops', () => {
             assertIfSkips(
               {op: [{p: ['a'], dummyOp: 1}, {p: ['x'], dummyOp: 1}]},
               query,
@@ -108,7 +108,7 @@ describe('skipPoll', function() {
             );
           });
 
-          it('multiple ops including empty path', function() {
+          it('multiple ops including empty path', () => {
             assertNotSkips({op: [{p: ['a'], dummyOp: 1}, {p: [], dummyOp: 1}]}, query);
             assertNotSkips({op: [{p: [], dummyOp: 1}, {p: ['x'], dummyOp: 1}]}, query);
           });
@@ -120,11 +120,11 @@ describe('skipPoll', function() {
 
 // `rawOp` is a partial op document, containing only one 'create', 'del' or 'op'
 function assertIfSkips(rawOp, query, expectedSkips) {
-  var op = {src: 'dummysrc', seq: 0, v: 0};
-  for (var key in rawOp) {
+  const op = {src: 'dummysrc', seq: 0, v: 0};
+  for (const key in rawOp) {
     op[key] = rawOp[key];
   }
-  var actualSkips = ShareDbMongo.prototype.skipPoll(
+  const actualSkips = ShareDbMongo.prototype.skipPoll(
     'dummycollection', 'dummyid', op, query);
   expect(actualSkips).eql(expectedSkips);
 }
